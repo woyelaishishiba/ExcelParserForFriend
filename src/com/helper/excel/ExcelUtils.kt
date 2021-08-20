@@ -28,7 +28,7 @@ object ExcelUtils {
             for (j in 1 until firstRow.physicalNumberOfCells) {
                 val key = getCellFormatValue(firstRow.getCell(j))
                 val value = map[which]?.map?.get(key) ?: continue
-                row.createCell(j)?.setCellValue(value)
+                row.createCell(j, value.cellType)?.let { putCellValue(value, it) }
             }
         }
         var output: FileOutputStream? = null
@@ -40,6 +40,16 @@ object ExcelUtils {
         }
     }
 
+    private fun putCellValue(value: Cell, target: Cell) {
+        when (value.cellType) {
+            CellType.NUMERIC -> target.setCellValue(value.numericCellValue)
+            CellType.STRING -> target.setCellValue(value.richStringCellValue)
+            CellType.FORMULA -> target.setCellValue(value.cellFormula)
+            CellType.BOOLEAN -> target.setCellValue(value.booleanCellValue)
+            else -> Unit
+        }
+    }
+
     private fun parseProperty(sheet: Sheet): Map<String, NodeInfo> {
         val result = HashMap<String, NodeInfo>()
         if (sheet.getRow(0).physicalNumberOfCells != 3) throw IllegalStateException("输入为什么不是三列呢")
@@ -47,7 +57,7 @@ object ExcelUtils {
             val row = sheet.getRow(i)
             val key = getCellFormatValue(row.getCell(0))
             result.putIfAbsent(key, NodeInfo())
-            result[key]?.addEntry(getCellFormatValue(row.getCell(1)), getCellFormatValue(row.getCell(2)))
+            result[key]?.addEntry(getCellFormatValue(row.getCell(1)), row.getCell(2))
         }
         return result
     }
@@ -61,7 +71,7 @@ object ExcelUtils {
             result.putIfAbsent(which, NodeInfo())
             for (j in 1 until row.physicalNumberOfCells) {
                 val key = getCellFormatValue(firstRow.getCell(j))
-                result[which]?.addEntry(key, getCellFormatValue(row.getCell(j)))
+                result[which]?.addEntry(key, row.getCell(j))
             }
         }
         return result
